@@ -1,26 +1,21 @@
 import { Routes, Route, Link } from 'react-router-dom'
 
-// remove after writing real components
-const Navbar = () => {
-  return (
-    <nav style={{ padding: 12 }}>
-      <Link to="/" style={{ padding: 12 }}>Login</Link>
-      <Link to="/register" style={{ padding: 12 }}>Register</Link>
-      <Link to="/home" style={{ padding: 12 }}>Home</Link>
-      <Link to="/quiz/1" style={{ padding: 12 }}>Quiz</Link>
-      <Link to="/quiz-result/1" style={{ padding: 12 }}>Quiz Result</Link>
-      <Link to="/contact" style={{ padding: 12 }}>Contact Us</Link>
-    </nav>
-  )
-}
-const Login = () => <h2>Login Page</h2>
-const Register = () => <h2>Register Page</h2>
-const Home = () => <h2>Home Page</h2>
-const Quiz = () => <h2>Quiz Page</h2>
-const QuizResult = () => <h2>Quiz Result Page</h2>
 const ContactUs = () => <h2>Contact Us Page</h2>
 
 import './App.css'
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Home from "./pages/Home";
+import Quiz from "./pages/Quiz";
+import QuizResult from "./pages/QuizResult";
+import UserManagement from "./pages/admin/UserManagement";
+import QuizResultManagement from "./pages/admin/QuizResultManagement";
+import QuestionManagement from "./pages/admin/QuestionManagement";
+import QuestionEdit from "./pages/admin/QuestionEdit";
+import ContactManagement from "./pages/admin/ContactManagement";
+import ContactDetail from "./pages/ContactDetails";
+import Contact from "./pages/Contact";
+import Navbar from "./components/Navbar";
 
 function App() {
   return (
@@ -32,10 +27,18 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/quiz/:categoryId" element={<Quiz />} />
         <Route path="/quiz-result/:quizId" element={<QuizResult />} />
-        <Route path="/contact" element={<ContactUs />} />
+
+        {/* Admin + Contact routes you already added */}
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/contact/:id" element={<ContactDetail />} />
+        <Route path="/admin/users" element={<UserManagement />} />
+        <Route path="/admin/quiz-results" element={<QuizResultManagement />} />
+        <Route path="/admin/questions" element={<QuestionManagement />} />
+        <Route path="/admin/questions/:id" element={<QuestionEdit />} />
       </Routes>
     </div>
   );
 }
 
 export default App
+
