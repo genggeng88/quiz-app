@@ -1,6 +1,4 @@
-import { Routes, Route, Link } from 'react-router-dom'
-
-const ContactUs = () => <h2>Contact Us Page</h2>
+import { Routes, Route } from 'react-router-dom'
 
 import './App.css'
 import Login from "./pages/Login";
@@ -12,7 +10,6 @@ import UserManagement from "./pages/admin/UserManagement";
 import QuizResultManagement from "./pages/admin/QuizResultManagement";
 import QuestionManagement from "./pages/admin/QuestionManagement";
 import QuestionEdit from "./pages/admin/QuestionEdit";
-import ContactManagement from "./pages/admin/ContactManagement";
 import ContactDetail from "./pages/ContactDetails";
 import Contact from "./pages/Contact";
 import Navbar from "./components/Navbar";
