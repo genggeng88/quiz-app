@@ -1,10 +1,12 @@
 // src/pages/Login.tsx
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { login } from "../services/auth";
 
 export default function Login() {
     const navigate = useNavigate();
+    const { state } = useLocation() as { state?: { flash?: string } };
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPwd, setShowPwd] = useState(false);
@@ -15,7 +17,6 @@ export default function Login() {
         e.preventDefault();
         setErr(null);
 
-        // basic client validation
         if (!/^\S+@\S+\.\S+$/.test(email)) {
             setErr("Please enter a valid email.");
             return;
@@ -38,12 +39,17 @@ export default function Login() {
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center p-6">
-            <form
-                onSubmit={onSubmit}
-                className="w-full max-w-sm bg-white rounded-2xl p-6 shadow"
-            >
+            <form onSubmit={onSubmit} className="w-full max-w-sm bg-white rounded-2xl p-6 shadow">
                 <h1 className="text-2xl font-semibold mb-4">Log in</h1>
 
+                {/* success flash from /register */}
+                {state?.flash && (
+                    <div className="mb-3 rounded-md bg-green-50 p-2 text-sm text-green-700 border border-green-200">
+                        {state.flash}
+                    </div>
+                )}
+
+                {/* error banner */}
                 {err && (
                     <div className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-700 border border-red-200">
                         {err}
@@ -92,9 +98,7 @@ export default function Login() {
 
                 <p className="text-sm mt-4">
                     Don’t have an account?{" "}
-                    <Link to="/register" className="underline">
-                        Register
-                    </Link>
+                    <Link to="/register" className="underline">Register</Link>
                 </p>
             </form>
         </div>

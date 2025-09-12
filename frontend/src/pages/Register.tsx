@@ -6,6 +6,8 @@ import { register } from "../services/auth";
 export default function Register() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [pwd, setPwd] = useState("");
     const [confirm, setConfirm] = useState("");
     const [showPwd, setShowPwd] = useState(false);
@@ -31,8 +33,21 @@ export default function Register() {
 
         try {
             setLoading(true);
-            await register(email, pwd);
-            navigate("/home"); // auto-login after registration
+            // register returns { ok: true, message: string } and DOES NOT log in
+            const res = await register({
+                email,
+                password: pwd,
+                firstName,
+                lastName,
+                isActive: true,   // sent as "True"
+                isAdmin: false,   // sent as "False"
+            });
+
+            // Redirect to /login; pass a flash message
+            navigate("/login", {
+                replace: true,
+                state: { flash: res.message || "Registered successfully. Please log in." },
+            });
         } catch (e: any) {
             setErr(e?.message ?? "Registration failed.");
         } finally {
@@ -42,10 +57,7 @@ export default function Register() {
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center p-6">
-            <form
-                onSubmit={onSubmit}
-                className="w-full max-w-sm bg-white rounded-2xl p-6 shadow"
-            >
+            <form onSubmit={onSubmit} className="w-full max-w-sm bg-white rounded-2xl p-6 shadow">
                 <h1 className="text-2xl font-semibold mb-4">Create account</h1>
 
                 {err && (
@@ -53,6 +65,22 @@ export default function Register() {
                         {err}
                     </div>
                 )}
+
+                <label className="block mb-2 text-sm font-medium">First name</label>
+                <input
+                    className="w-full rounded-md border p-2 mb-4"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    autoComplete="given-name"
+                />
+
+                <label className="block mb-2 text-sm font-medium">Last name</label>
+                <input
+                    className="w-full rounded-md border p-2 mb-4"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    autoComplete="family-name"
+                />
 
                 <label className="block mb-2 text-sm font-medium">Email</label>
                 <input
@@ -107,9 +135,7 @@ export default function Register() {
 
                 <p className="text-sm mt-4">
                     Already have an account?{" "}
-                    <Link to="/" className="underline">
-                        Log in
-                    </Link>
+                    <Link to="/login" className="underline">Log in</Link>
                 </p>
             </form>
         </div>

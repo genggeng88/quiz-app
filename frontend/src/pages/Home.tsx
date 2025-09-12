@@ -1,25 +1,28 @@
 // src/pages/Home.tsx
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CATEGORIES, listAttempts } from "../lib/quiz";
-import type { Category } from "../lib/quiz";
+import { CATEGORIES, fetchQuizSummaries } from "../lib/quiz";
+import type { Category, AttemptDetail } from "../lib/quiz";
 import { getCurrentUser } from "../services/auth";
 
 function formatSeconds(sec: number) {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
+    const total = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
     return `${m}m ${s}s`;
 }
 
 export default function Home() {
     const navigate = useNavigate();
     const [category, setCategory] = useState<Category>("Math");
-    const [recent, setRecent] = useState(listAttempts());
+    const [recent, setRecent] = useState<AttemptDetail[]>([]);
     const user = getCurrentUser();
     const isAdmin = user?.role === "admin";
 
     useEffect(() => {
-        setRecent(listAttempts());
+        fetchQuizSummaries()
+            .then(setRecent)
+            .catch(() => setRecent([]));
     }, []);
 
     return (
@@ -73,17 +76,6 @@ export default function Home() {
             <section className="bg-white rounded-2xl shadow p-5">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold">Recent Quiz Summary</h2>
-                    {recent.length > 0 && (
-                        <button
-                            className="text-sm underline"
-                            onClick={() => {
-                                localStorage.removeItem("quizzes");
-                                setRecent([]);
-                            }}
-                        >
-                            Clear history
-                        </button>
-                    )}
                 </div>
 
                 <div className="overflow-x-auto">

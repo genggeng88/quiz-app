@@ -1,7 +1,7 @@
 // src/pages/admin/QuizResultManagement.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CATEGORIES, listAttempts } from "../../lib/quiz";
+import { CATEGORIES, fetchQuizSummaries } from "../../lib/quiz";
 import type { AttemptDetail, Category } from "../../lib/quiz";
 
 const PAGE_SIZE = 5;
@@ -11,42 +11,72 @@ type SortDir = "asc" | "desc";
 
 export default function QuizResultManagement() {
     const navigate = useNavigate();
+
     const [all, setAll] = useState<AttemptDetail[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     const [category, setCategory] = useState<"All" | Category>("All");
     const [userName, setUserName] = useState<"All" | string>("All");
+
     const [sortKey, setSortKey] = useState<SortKey>("createdAtISO");
-    const [sortDir, setSortDir] = useState<SortDir>("desc"); // default newest first
+    const [sortDir, setSortDir] = useState<SortDir>("desc"); // newest first
     const [page, setPage] = useState(1);
 
+    // Load summaries from backend
     useEffect(() => {
-        // load summaries (they already exclude heavy fields)
-        const rows = listAttempts();
-        setAll(rows);
+        let mounted = true;
+        setLoading(true);
+        setError(null);
+        (async () => {
+            try {
+                const rows = await fetchQuizSummaries();
+                if (mounted) setAll(rows);
+            } catch (e: any) {
+                if (mounted) setError(e?.message ?? "Failed to load quiz summaries");
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
     }, []);
 
+    // Distinct user options (prefer full name, fallback to email)
     const userOptions = useMemo(() => {
         const set = new Set<string>();
-        all.forEach((a) => a.userFullName && set.add(a.userFullName));
+        all.forEach((a) => {
+            const label = a.userFullName?.trim() || a.userEmail?.trim();
+            if (label) set.add(label);
+        });
         return Array.from(set).sort((a, b) => a.localeCompare(b));
     }, [all]);
 
+    // Apply filters
     const filtered = useMemo(() => {
         return all.filter((r) => {
             if (category !== "All" && r.category !== category) return false;
-            if (userName !== "All" && r.userFullName !== userName) return false;
+            if (userName !== "All") {
+                const label = r.userFullName?.trim() || r.userEmail?.trim();
+                if (label !== userName) return false;
+            }
             return true;
         });
     }, [all, category, userName]);
 
+    // Sort
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
             if (sortKey === "createdAtISO") {
-                const da = new Date(a.createdAtISO).getTime();
-                const db = new Date(b.createdAtISO).getTime();
+                const da = new Date(a.createdAtISO || 0).getTime();
+                const db = new Date(b.createdAtISO || 0).getTime();
                 return sortDir === "asc" ? da - db : db - da;
             }
             if (sortKey === "userFullName") {
-                const cmp = a.userFullName.localeCompare(b.userFullName);
+                const ua = (a.userFullName || a.userEmail || "").toLowerCase();
+                const ub = (b.userFullName || b.userEmail || "").toLowerCase();
+                const cmp = ua.localeCompare(ub);
                 return sortDir === "asc" ? cmp : -cmp;
             }
             // category
@@ -55,13 +85,14 @@ export default function QuizResultManagement() {
         });
     }, [filtered, sortKey, sortDir]);
 
+    // Pagination
     const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
     const pageRows = useMemo(() => {
         const start = (page - 1) * PAGE_SIZE;
         return sorted.slice(start, start + PAGE_SIZE);
     }, [sorted, page]);
 
-    // reset to first page on filter/sort change
+    // Reset to first page on filter/sort change
     useEffect(() => setPage(1), [category, userName, sortKey, sortDir]);
 
     const toggleSort = (key: SortKey) => {
@@ -112,6 +143,10 @@ export default function QuizResultManagement() {
                         ))}
                     </select>
                 </div>
+
+                <div className="sm:ml-auto text-sm text-gray-600">
+                    {loading ? "Loading…" : error ? <span className="text-red-600">Error: {error}</span> : `${filtered.length} result(s)`}
+                </div>
             </div>
 
             <div className="overflow-x-auto bg-white rounded-2xl shadow">
@@ -136,37 +171,42 @@ export default function QuizResultManagement() {
                                 dir={sortDir}
                                 onClick={() => toggleSort("userFullName")}
                             />
-                            <th className="py-2 px-4">No. of question</th>
+                            <th className="py-2 px-4">No. of questions</th>
                             <th className="py-2 px-4">Score</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {pageRows.length === 0 ? (
+                        {loading ? (
                             <tr>
-                                <td colSpan={5} className="py-6 px-4 text-gray-500">
-                                    No results.
-                                </td>
+                                <td colSpan={5} className="py-6 px-4 text-gray-500">Loading…</td>
+                            </tr>
+                        ) : error ? (
+                            <tr>
+                                <td colSpan={5} className="py-6 px-4 text-red-600">Error: {error}</td>
+                            </tr>
+                        ) : pageRows.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="py-6 px-4 text-gray-500">No results.</td>
                             </tr>
                         ) : (
-                            pageRows.map((r) => (
-                                <tr
-                                    key={r.quizId}
-                                    className="border-b last:border-none hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => navigate(`/quiz-result/${r.quizId}`)}
-                                >
-                                    <td className="py-2 px-4 whitespace-nowrap">
-                                        {new Date(r.createdAtISO).toLocaleString()}
-                                    </td>
-                                    <td className="py-2 px-4">{r.category}</td>
-                                    <td className="py-2 px-4">{r.userFullName}</td>
-                                    <td className="py-2 px-4">{/* summaries have no questions; store length in score calc below if needed */}{
-                                        // If you want exact count but summaries omit questions,
-                                        // use r as detail if you store count separately. For now compute from correctRate fallback 5:
-                                        // Better: store 'questionCount' in summary at saveAttempt.
-                                    }{(r as any).questionCount ?? 5}</td>
-                                    <td className="py-2 px-4">{(r.correctRate * 100).toFixed(0)}%</td>
-                                </tr>
-                            ))
+                            pageRows.map((r) => {
+                                const questionCount = (r as any).questionCount ?? 5; // fallback if summaries don’t include it
+                                return (
+                                    <tr
+                                        key={r.quizId}
+                                        className="border-b last:border-none hover:bg-gray-50 cursor-pointer"
+                                        onClick={() => navigate(`/quiz-result/${r.quizId}`)}
+                                    >
+                                        <td className="py-2 px-4 whitespace-nowrap">
+                                            {r.createdAtISO ? new Date(r.createdAtISO).toLocaleString() : "—"}
+                                        </td>
+                                        <td className="py-2 px-4">{r.category}</td>
+                                        <td className="py-2 px-4">{r.userFullName || r.userEmail || "—"}</td>
+                                        <td className="py-2 px-4">{questionCount}</td>
+                                        <td className="py-2 px-4">{(r.correctRate * 100).toFixed(0)}%</td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>

@@ -1,5 +1,5 @@
 // src/components/Navbar.tsx
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentUser, logout } from "../services/auth";
 import { clearOpenQuiz, getOpenQuiz } from "../lib/quiz";
 
@@ -7,15 +7,17 @@ export default function Navbar() {
     const user = getCurrentUser();
     const navigate = useNavigate();
     const location = useLocation();
-    const openQuiz = getOpenQuiz(); // read once per render; URL changes will re-render via Router
-
+    const openQuiz = getOpenQuiz(); // re-renders on URL change
     const isLoggedIn = !!user;
     const isAdmin = user?.role === "admin";
+
+    // ✅ Brand goes to /home if logged in, else /login
+    const brandTo = isLoggedIn ? "/home" : "/login";
 
     const doLogout = () => {
         logout();
         clearOpenQuiz();
-        navigate("/");
+        navigate("/login", { replace: true }); // ✅ send to /login after logout
     };
 
     const linkCls = ({ isActive }: { isActive: boolean }) =>
@@ -25,7 +27,10 @@ export default function Navbar() {
         <nav className="w-full border-b bg-white">
             <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold mr-2">Quiz App</span>
+                    {/* ✅ Brand link */}
+                    <Link to={brandTo} className="font-semibold mr-2 hover:opacity-80" aria-label="Quiz App">
+                        Quiz App
+                    </Link>
 
                     {/* Home: only when logged in */}
                     {isLoggedIn && (
@@ -41,17 +46,15 @@ export default function Navbar() {
                         </NavLink>
                     )}
 
-                    {/* Contact: always visible (shared endpoint) */}
+                    {/* Contact: always visible */}
                     <NavLink to="/contact" className={linkCls}>
                         Contact Us
                     </NavLink>
 
-                    {/* Admin quick links (optional, show when admin) */}
+                    {/* Admin quick links */}
                     {isAdmin && (
                         <div className="relative group">
-                            <button className="px-3 py-2 rounded-md text-sm hover:bg-gray-100">
-                                Admin ▾
-                            </button>
+                            <button className="px-3 py-2 rounded-md text-sm hover:bg-gray-100">Admin ▾</button>
                             <div className="absolute hidden group-hover:block bg-white border rounded-md mt-1 shadow">
                                 <NavLink to="/admin/users" className="block px-3 py-2 hover:bg-gray-100">
                                     Users
@@ -71,16 +74,14 @@ export default function Navbar() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Register: hide when logged in */}
                     {!isLoggedIn && (
                         <NavLink to="/register" className={linkCls}>
                             Register
                         </NavLink>
                     )}
 
-                    {/* Login / Logout toggle */}
                     {!isLoggedIn ? (
-                        <NavLink to="/" className={linkCls}>
+                        <NavLink to="/login" className={linkCls}>
                             Login
                         </NavLink>
                     ) : (
