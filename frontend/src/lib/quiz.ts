@@ -73,33 +73,36 @@ export async function generateQuiz(category: Category): Promise<Question[]> {
         { credentials: "include" }
     );
     const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to generate quiz");
+    if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to generate quiz");
 
-    return (data.data.questions ?? []).map((q: any) => ({
-        id: String(q.question_id ?? q.id),
+    const list: any[] = data.data ?? data.questions ?? [];
+    return list.map((q: any) => ({
+        id: String(q.questionId ?? q.question_id ?? q.id),
         prompt: String(q.question ?? q.prompt ?? ""),
         options: (q.options ?? []).map((opt: any) => ({
-            id: String(opt.choice_id ?? opt.id ?? opt.value),
+            id: String(opt.choiceId ?? opt.choice_id ?? opt.id ?? opt.value),
             text: String(opt.description ?? opt.text ?? opt.label ?? opt.value),
         })),
-        answer: "", // fill later if you want to show the correct answer
+        answer: "",
     }));
 }
 
 // Submit a quiz attempt
 export async function submitQuiz(
     category: Category,
-    answers: Record<string, string> // questionId -> choiceId (as string)
+    answers: Record<string, string>,
+    times?: { timeStart?: string; timeEnd?: string }   // ← add this
 ): Promise<{ quizId: string; score: number }> {
     const categoryId = CATEGORY_NAME_TO_ID[category];
-
-    const payload = {
+    const payload: any = {
         answers: Object.entries(answers).map(([questionId, choiceId]) => ({
             questionId: Number(questionId),
             choiceId: Number(choiceId),
         })),
         categoryId,
     };
+    if (times?.timeStart) payload.timeStart = times.timeStart;
+    if (times?.timeEnd) payload.timeEnd = times.timeEnd;
 
     const res = await fetch(
         `http://localhost:4000/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
@@ -112,11 +115,7 @@ export async function submitQuiz(
     );
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to submit quiz");
-
-    return {
-        quizId: String(data.data.quizId ?? data.data.quiz_id),
-        score: Number(data.data.score ?? 0),
-    };
+    return { quizId: String(data.data.quizId), score: Number(data.data.score ?? 0) };
 }
 
 export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
@@ -126,10 +125,9 @@ export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to fetch quiz summaries");
 
-    // Transform backend data to AttemptDetail[]
     return data.data.map((quiz: any) => ({
         quizId: quiz.quiz_id.toString(),
-        category: quiz.category_id, // You may want to map category_id to name
+        category: quiz.category_id,
         createdAtISO: quiz.time_start,
         timeTakenSec: quiz.time_end && quiz.time_start
             ? Math.floor((new Date(quiz.time_end).getTime() - new Date(quiz.time_start).getTime()) / 1000)
@@ -142,35 +140,80 @@ export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
     }));
 }
 
+// src/lib/quiz.ts
 export async function fetchQuizResult(quizId: number): Promise<AttemptDetail> {
     const res = await fetch(`http://localhost:4000/quiz/result/${quizId}`, {
         credentials: "include",
     });
     const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to fetch quiz result");
+    if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to fetch quiz result");
 
-    // Transform backend data to AttemptDetail format
-    const quiz = data.data.quiz;
-    const items = data.data.items;
+    const quiz = data.data?.quiz ?? {};
+    const rows: any[] = data.data?.items ?? [];
+
+    type QBuild = { id: string; prompt: string; options: Option[]; answer: string };
+    const qMap = new Map<string, QBuild>();
+    const answers: Record<string, string> = {};
+
+    for (const r of rows) {
+        const qid = String(r.question_id);
+        if (!qid) continue;
+
+        // create question bucket
+        let qb = qMap.get(qid);
+        if (!qb) {
+            qb = { id: qid, prompt: String(r.question ?? ""), options: [], answer: "" };
+            qMap.set(qid, qb);
+        }
+
+        // add option from this row (dedupe)
+        const choiceId = String(r.choice_id);
+        const text = String(r.option_desc ?? "");
+        if (!qb.options.some(o => o.id === choiceId)) {
+            qb.options.push({ id: choiceId, text });
+        }
+
+        // correct answer lives on the row where is_correct === true
+        if (r.is_correct === true) {
+            qb.answer = choiceId;
+        }
+
+        // user's choice (same across the 4 rows)
+        if (r.user_choice_id != null && answers[qid] == null) {
+            answers[qid] = String(r.user_choice_id);
+        }
+    }
+
+    const questions = Array.from(qMap.values());
+
+    // correct rate: prefer backend, else compute
+    const computed =
+        questions.filter(q => q.answer && answers[q.id] === q.answer).length /
+        Math.max(1, questions.length);
+
+    const correctRate =
+        typeof quiz.correct_rate === "number"
+            ? quiz.correct_rate
+            : typeof data.data?.correctness_rate === "number"
+                ? data.data.correctness_rate
+                : computed;
+
+    const category = toCategoryName(quiz.category ?? quiz.category_id);
+
+    const timeTakenSec =
+        quiz.time_end && quiz.time_start
+            ? Math.floor((new Date(quiz.time_end).getTime() - new Date(quiz.time_start).getTime()) / 1000)
+            : 0;
 
     return {
-        quizId: quiz.quiz_id.toString(),
-        category: quiz.category,
-        createdAtISO: quiz.time_start,
-        timeTakenSec: quiz.time_end && quiz.time_start
-            ? Math.floor((new Date(quiz.time_end).getTime() - new Date(quiz.time_start).getTime()) / 1000)
-            : 0,
-        correctRate: quiz.correct_rate ?? 0,
-        questions: items.map((item: any) => ({
-            id: item.question_id.toString(),
-            prompt: item.question,
-            options: [], // You can fill this if you want to show options
-            answer: "",  // You can fill this if you want to show correct answer
-        })),
-        answers: Object.fromEntries(
-            items.map((item: any) => [item.question_id.toString(), item.user_choice_id?.toString() ?? ""])
-        ),
-        userEmail: "",      // Fill if backend provides
-        userFullName: "",   // Fill if backend provides
+        quizId: String(quiz.quiz_id ?? quizId),
+        category,
+        createdAtISO: String(quiz.time_start ?? ""),
+        timeTakenSec,
+        correctRate,
+        questions,
+        answers,
+        userEmail: "",      // not provided by payload
+        userFullName: "",   // not provided by payload
     };
 }

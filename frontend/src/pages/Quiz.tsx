@@ -1,13 +1,7 @@
 // src/pages/Quiz.tsx
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Question } from "../lib/quiz";
-import {
-    generateQuiz,
-    submitQuiz,
-    setOpenQuiz,
-    clearOpenQuiz,
-} from "../lib/quiz";
-import { getCurrentUser } from "../services/auth";
+import { generateQuiz, submitQuiz, setOpenQuiz, clearOpenQuiz } from "../lib/quiz";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 
 function formatSeconds(sec: number) {
@@ -28,7 +22,6 @@ export default function Quiz() {
     const [error, setError] = useState<string | null>(null);
 
     const [answers, setAnswers] = useState<Record<string, string>>({}); // qid -> choiceId
-    const [index, setIndex] = useState(0);
     const [startedAt, setStartedAt] = useState<number>(() => Date.now());
     const [nowTick, setNowTick] = useState<number>(() => Date.now()); // drives timer UI
     const [submitting, setSubmitting] = useState(false);
@@ -39,7 +32,6 @@ export default function Quiz() {
         setLoading(true);
         setError(null);
         setAnswers({});
-        setIndex(0);
         setStartedAt(Date.now());
 
         (async () => {
@@ -69,25 +61,27 @@ export default function Quiz() {
         return () => clearOpenQuiz();
     }, [category, location.pathname]);
 
-    const currentQ = questions[index];
-
     const choose = (qid: string, choiceId: string) =>
         setAnswers((prev) => ({ ...prev, [qid]: choiceId }));
 
-    const canPrev = index > 0;
-    const canNext = index < Math.max(0, questions.length - 1);
-
-    const prev = () => canPrev && setIndex((i) => i - 1);
-    const next = () => canNext && setIndex((i) => i + 1);
+    const answeredCount = useMemo(
+        () => questions.reduce((acc, q) => acc + (answers[q.id] ? 1 : 0), 0),
+        [answers, questions]
+    );
 
     const submit = async () => {
         if (!questions.length) return;
         const elapsedSec = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+        const timeStartISO = new Date(startedAt).toISOString();
+        const timeEndISO = new Date().toISOString();
         try {
             setSubmitting(true);
-            const { quizId } = await submitQuiz(category, answers);
+            const { quizId } = await submitQuiz(category, answers, {
+                timeStart: timeStartISO,
+                timeEnd: timeEndISO,
+            });
             clearOpenQuiz();
-            navigate(`/quiz-result/${quizId}`, { replace: true, state: { timeTakenSec: elapsedSec } });
+            navigate(`/quiz/result/${quizId}`, { replace: true, state: { timeTakenSec: elapsedSec } });
         } catch (e: any) {
             setError(e?.message ?? "Failed to submit");
         } finally {
@@ -99,8 +93,7 @@ export default function Quiz() {
         <div className="p-6 max-w-4xl mx-auto">
             <header className="flex items-center justify-between mb-4">
                 <div className="text-sm text-gray-600">
-                    Category: <span className="font-medium">{category}</span> • Question{" "}
-                    {Math.min(index + 1, Math.max(questions.length, 1))}/{Math.max(questions.length, 1)}
+                    Category: <span className="font-medium">{category}</span> • Answered {answeredCount}/{Math.max(questions.length, 1)}
                 </div>
                 <div className="text-sm text-gray-600">
                     Time: {formatSeconds(Math.round((nowTick - startedAt) / 1000))}
@@ -111,42 +104,30 @@ export default function Quiz() {
                 <div className="text-sm text-gray-600">Loading questions…</div>
             ) : error ? (
                 <div className="text-sm text-red-600">Error: {error}</div>
-            ) : !currentQ ? (
+            ) : questions.length === 0 ? (
                 <div className="text-sm text-gray-600">No questions available.</div>
             ) : (
                 <>
-                    <QuestionCard
-                        question={currentQ}
-                        selected={answers[currentQ.id] ?? ""}
-                        onSelect={(choiceId) => choose(currentQ.id, choiceId)}
-                    />
+                    <div className="grid gap-4">
+                        {questions.map((q, i) => (
+                            <QuestionCard
+                                key={q.id}
+                                index={i}
+                                question={q}
+                                selected={answers[q.id] ?? ""}
+                                onSelect={(choiceId) => choose(q.id, choiceId)}
+                            />
+                        ))}
+                    </div>
 
-                    <div className="mt-6 flex items-center justify-between">
+                    <div className="mt-6 flex items-center justify-end">
                         <button
-                            onClick={prev}
-                            disabled={!canPrev || submitting}
-                            className="rounded-md px-4 py-2 border disabled:opacity-50"
+                            onClick={submit}
+                            disabled={submitting}
+                            className="rounded-md px-4 py-2 bg-black text-white disabled:opacity-50"
                         >
-                            Prev
+                            {submitting ? "Submitting…" : "Submit Quiz"}
                         </button>
-
-                        {index < questions.length - 1 ? (
-                            <button
-                                onClick={next}
-                                disabled={submitting}
-                                className="rounded-md px-4 py-2 border"
-                            >
-                                Next
-                            </button>
-                        ) : (
-                            <button
-                                onClick={submit}
-                                disabled={submitting}
-                                className="rounded-md px-4 py-2 bg-black text-white disabled:opacity-50"
-                            >
-                                {submitting ? "Submitting…" : "Submit Quiz"}
-                            </button>
-                        )}
                     </div>
                 </>
             )}
@@ -155,19 +136,28 @@ export default function Quiz() {
 }
 
 function QuestionCard({
+    index,
     question,
     selected,
     onSelect,
 }: {
+    index: number;
     question: Question;
     selected: string; // choiceId
     onSelect: (choiceId: string) => void;
 }) {
+    // in case options were strings for any reason, normalize
+    const opts = (question.options as any[]).map((o) =>
+        typeof o === "string" ? { id: o, text: o } : o
+    );
+
     return (
         <div className="bg-white rounded-2xl shadow p-5">
-            <h3 className="text-lg font-semibold mb-3">{question.prompt}</h3>
+            <h3 className="text-lg font-semibold mb-3">
+                Q{index + 1}. {question.prompt}
+            </h3>
             <div className="grid gap-2">
-                {question.options.map((opt) => {
+                {opts.map((opt) => {
                     const id = `${question.id}-${opt.id}`;
                     return (
                         <label
@@ -177,7 +167,7 @@ function QuestionCard({
                         >
                             <input
                                 type="radio"
-                                name={question.id}
+                                name={`q-${question.id}`}
                                 checked={selected === opt.id}
                                 onChange={() => onSelect(opt.id)}
                                 className="accent-black"

@@ -12,6 +12,7 @@ export type User = {
     status: Status;
     firstName?: string;
     lastName?: string;
+    is_admin?: boolean;
 };
 
 export type RegisterResult = { ok: true; message: string };

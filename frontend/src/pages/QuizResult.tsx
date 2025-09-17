@@ -142,10 +142,6 @@ export default function QuizResult() {
                     );
                 })}
             </div>
-
-            <div className="mt-6">
-                <Link to="/home" className="rounded-md border px-4 py-2">Back to Home</Link>
-            </div>
         </div>
     );
 }

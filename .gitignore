@@ -1,24 +1,21 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# --- Backend (Python) ---
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.env
+backend/.env.*
 
-node_modules
-dist
-dist-ssr
-*.local
+# --- Frontend (Node/Vite) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+frontend/*.log
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# --- General ---
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db

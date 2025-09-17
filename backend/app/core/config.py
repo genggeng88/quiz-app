@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "dev"
     JWT_EXPIRE_DAYS: int = 7
     CORS_ORIGINS: str = "http://localhost:5173"
-    ALLOW_ADMIN_SELF_REGISTER: bool = False
+    ALLOW_ADMIN_SELF_REGISTER: bool = True
     ADMIN_BOOTSTRAP_SECRET: str = "change-me"
 
     class Config:
