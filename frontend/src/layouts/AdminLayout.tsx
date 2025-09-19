@@ -6,7 +6,7 @@ export default function AdminLayout() {
     return (
         <div className="min-h-screen">
             <AdminNavbar />
-            <main className="pt-6">
+            <main className="pt-16">
                 <Outlet />
             </main>
         </div>

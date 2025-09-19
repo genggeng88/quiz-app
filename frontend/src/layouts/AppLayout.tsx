@@ -2,6 +2,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
 import UserNavbar from "../components/UserNavbar";
+import AdminNavbar from "../components/AdminNavbar";
 
 export default function AppLayout() {
     const user = getCurrentUser();
@@ -10,12 +11,12 @@ export default function AppLayout() {
         (typeof user?.role === "string" && user.role.toLowerCase() === "admin");
 
     const { pathname } = useLocation();
-    const hideUserNav = isAdmin && pathname === "/home";  // <- key rule
+    const isAdminOnHome = isAdmin && pathname === "/home";
 
     return (
         <div className="min-h-screen">
-            {!hideUserNav && <UserNavbar />}
-            <main className="pt-6">
+            {isAdminOnHome ? <AdminNavbar /> : <UserNavbar />}
+            <main className="pt-16">
                 <Outlet />
             </main>
         </div>
