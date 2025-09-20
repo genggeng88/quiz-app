@@ -14,10 +14,12 @@ export default function AppLayout() {
     const isAdminOnHome = isAdmin && pathname === "/home";
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-gray-50">
             {isAdminOnHome ? <AdminNavbar /> : <UserNavbar />}
             <main className="pt-16">
-                <Outlet />
+                <div className="container mx-auto max-w-5xl px-4 py-8">
+                    <Outlet />
+                </div>
             </main>
         </div>
     );

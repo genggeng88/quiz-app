@@ -20,7 +20,7 @@ DROP TABLE IF EXISTS quizquestion CASCADE;
 -- ===== Core tables =====
 
 -- User
-CREATE TABLE "user" (
+CREATE TABLE users (
   user_id       BIGSERIAL PRIMARY KEY,
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE category (
 );
 
 -- Question
-CREATE TABLE question (
+CREATE TABLE questions (
   question_id BIGSERIAL PRIMARY KEY,
   category_id BIGINT NOT NULL REFERENCES category(category_id) ON DELETE RESTRICT,
   description TEXT NOT NULL,
@@ -60,7 +60,7 @@ CREATE UNIQUE INDEX uniq_one_correct_per_question
   WHERE is_correct = TRUE;
 
 -- Quiz (a user taking a quiz for a category)
-CREATE TABLE quiz (
+CREATE TABLE quizzes (
   quiz_id      BIGSERIAL PRIMARY KEY,
   user_id      BIGINT NOT NULL REFERENCES "user"(user_id) ON DELETE CASCADE,
   category_id  BIGINT NOT NULL REFERENCES category(category_id) ON DELETE RESTRICT,
@@ -82,7 +82,7 @@ CREATE TABLE quizquestion (
 CREATE UNIQUE INDEX uq_quiz_question ON quizquestion(quiz_id, question_id);
 
 -- Contact
-CREATE TABLE contact (
+CREATE TABLE contacts (
   contact_id BIGSERIAL PRIMARY KEY,
   subject    TEXT NOT NULL,
   message    TEXT NOT NULL,

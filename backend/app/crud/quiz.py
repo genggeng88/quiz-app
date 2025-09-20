@@ -13,7 +13,7 @@ def get_random_questions_with_options(db: Session, category_id: int, limit: int 
             json_build_object('choiceId', c.choice_id, 'description', c.description)
             ORDER BY random()
           ) AS options
-        FROM question q
+        FROM questions q
         JOIN choice c ON c.question_id = q.question_id
         WHERE q.category_id = :cid
         GROUP BY q.question_id, q.description
@@ -24,7 +24,7 @@ def get_random_questions_with_options(db: Session, category_id: int, limit: int 
 
 def insert_quiz(db: Session, *, user_id: int, category_id: int, t_start, t_end) -> int:
     row = db.execute(text("""
-        INSERT INTO quiz(user_id, category_id, name, time_start, time_end, correct_rate)
+        INSERT INTO quizzes(user_id, category_id, name, time_start, time_end, correct_rate)
         VALUES (:uid, :cid, 'Quiz', :ts, :te, 0)
         RETURNING quiz_id
     """), {"uid": user_id, "cid": category_id, "ts": t_start, "te": t_end}).mappings().first()
@@ -50,13 +50,13 @@ def compute_score(db: Session, quiz_id: int) -> float:
     return float(score or 0.0)
 
 def update_quiz_score(db: Session, quiz_id: int, score: float) -> None:
-    db.execute(text("UPDATE quiz SET correct_rate = :r WHERE quiz_id = :id"),
+    db.execute(text("UPDATE quizzes SET correct_rate = :r WHERE quiz_id = :id"),
                {"r": score, "id": quiz_id})
 
 def get_quiz_header(db: Session, quiz_id: int) -> dict | None:
     row = db.execute(text("""
         SELECT q.quiz_id, q.time_start, q.time_end, q.correct_rate, c.name AS category
-        FROM quiz q JOIN category c ON c.category_id = q.category_id
+        FROM quizzes q JOIN category c ON c.category_id = q.category_id
         WHERE q.quiz_id = :id
     """), {"id": quiz_id}).mappings().first()
     return dict(row) if row else None

@@ -37,7 +37,7 @@ function App() {
         <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route path="/home" element={<Home />} />
           <Route path="/quiz/:categoryId" element={<Quiz />} />
-          <Route path="/quiz-result/:quizId" element={<QuizResult />} />
+          <Route path="/quiz/result/:quizId" element={<QuizResult />} />
           <Route path="/contact" element={<Contact />} />
         </Route>
 
