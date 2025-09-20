@@ -1,6 +1,8 @@
 fastapi
 uvicorn[standard]
-psycopg[binary]          # psycopg v3 for Postgres (Neon); or use asyncpg/sqlalchemy if you already do
-SQLAlchemy               # only if you use it
-alembic                  # only if you use migrations
-python-dotenv            # if you load .env locally
+pydantic>=2
+pydantic-settings
+psycopg[binary]        # if you use Postgres via psycopg3
+SQLAlchemy             # only if you use it
+alembic                # only if you use migrations
+python-dotenv 
