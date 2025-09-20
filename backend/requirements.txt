@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+psycopg[binary]          # psycopg v3 for Postgres (Neon); or use asyncpg/sqlalchemy if you already do
+SQLAlchemy               # only if you use it
+alembic                  # only if you use migrations
+python-dotenv            # if you load .env locally

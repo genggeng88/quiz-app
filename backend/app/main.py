@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
+@app.get("/healthz")
 def health(): return {"ok": True}
 
 app.include_router(auth.router)
