@@ -5,8 +5,20 @@ from sqlalchemy.orm import sessionmaker, Session
 from app.core.config import settings
 
 # Create engine (sync)
+# engine = create_engine(
+#     settings.DATABASE_URL,
+#     pool_pre_ping=True,
+#     future=True,
+# )
+
+raw = settings.DATABASE_URL  # from env
+if raw.startswith("postgres://"):
+    raw = raw.replace("postgres://", "postgresql+psycopg://", 1)
+elif raw.startswith("postgresql://"):
+    raw = raw.replace("postgresql://", "postgresql+psycopg://", 1)
+
 engine = create_engine(
-    settings.DATABASE_URL,
+    raw,
     pool_pre_ping=True,
     future=True,
 )
