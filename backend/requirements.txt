@@ -1,8 +1,20 @@
 fastapi
 uvicorn[standard]
+
+# Pydantic + settings
 pydantic[email]==2.11.7
 pydantic-settings
-psycopg[binary]        # if you use Postgres via psycopg3
-SQLAlchemy             # only if you use it
-alembic                # only if you use migrations
 python-dotenv
+
+# Auth / security
+python-jose[cryptography]>=3.3.0,<4
+passlib[bcrypt]>=1.7.4,<2
+python-multipart>=0.0.9    # needed if you use form data (e.g., OAuth2PasswordRequestForm)
+
+# Database stack
+psycopg[binary]            # Postgres (psycopg3)
+SQLAlchemy>=2.0
+alembic
+
+# Files (optional)
+aiofiles>=23.0.0           # needed if you serve files/StaticFiles
