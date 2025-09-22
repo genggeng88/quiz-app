@@ -1,8 +1,8 @@
 fastapi
 uvicorn[standard]
-pydantic>=2
+pydantic[email]==2.11.7
 pydantic-settings
 psycopg[binary]        # if you use Postgres via psycopg3
 SQLAlchemy             # only if you use it
 alembic                # only if you use migrations
-python-dotenv 
+python-dotenv
