@@ -19,6 +19,7 @@ function ContactUserForm() {
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,7 +30,7 @@ function ContactUserForm() {
         }
         try {
             setLoading(true);
-            const res = await fetch("http://localhost:4000/contact", {
+            const res = await fetch(`${BASE_URL}/contact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",

@@ -4,6 +4,8 @@
 export type Role = "admin" | "user";
 export type Status = "active" | "suspended";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export type User = {
     id: string;
     email: string;
@@ -90,7 +92,7 @@ function normalizeUser(raw: any): User {
 }
 
 export async function login(email: string, password: string): Promise<User> {
-    const res = await fetch("http://localhost:4000/auth/login", {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // important for cookies!
@@ -111,7 +113,7 @@ export async function login(email: string, password: string): Promise<User> {
 }
 
 export async function refreshToken(): Promise<User | null> {
-    const res = await fetch("http://localhost:4000/auth/refresh", {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
         credentials: "include", // important for cookies!
         headers: { ...authHeaders() },
     });
@@ -147,7 +149,7 @@ export async function register(opts: {
         is_admin: (opts.isAdmin ?? false) ? "True" : "False",
     }
 
-    const res = await fetch("http://localhost:4000/auth/register", {
+    const res = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -164,7 +166,7 @@ export async function register(opts: {
 
 export async function logout() {
     try {
-        await fetch("http://localhost:4000/auth/logout", {
+        await fetch(`${BASE_URL}/auth/logout`, {
             method: "POST",
             credentials: "include",
             headers: { ...authHeaders() },

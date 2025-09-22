@@ -45,6 +45,7 @@ export type AttemptDetail = {
 
 // ----- Local "open quiz" helpers -----
 const OPEN_KEY = "openQuiz";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export function setOpenQuiz(info: { url: string; category: Category; startedAtISO: string }) {
     try { localStorage.setItem(OPEN_KEY, JSON.stringify(info)); } catch { }
@@ -69,7 +70,7 @@ export function getOpenQuiz():
 export async function generateQuiz(category: Category): Promise<Question[]> {
     const categoryId = CATEGORY_NAME_TO_ID[category];
     const res = await fetch(
-        `http://localhost:4000/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
+        `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
         { credentials: "include" }
     );
     const data = await res.json();
@@ -105,7 +106,7 @@ export async function submitQuiz(
     if (times?.timeEnd) payload.timeEnd = times.timeEnd;
 
     const res = await fetch(
-        `http://localhost:4000/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
+        `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -119,7 +120,7 @@ export async function submitQuiz(
 }
 
 export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
-    const res = await fetch(`http://localhost:4000/quiz/result`, {
+    const res = await fetch(`${BASE_URL}/quiz/result`, {
         credentials: "include",
     });
     const data = await res.json();
@@ -142,7 +143,7 @@ export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
 
 // src/lib/quiz.ts
 export async function fetchQuizResult(quizId: number): Promise<AttemptDetail> {
-    const res = await fetch(`http://localhost:4000/quiz/result/${quizId}`, {
+    const res = await fetch(`${BASE_URL}/quiz/result/${quizId}`, {
         credentials: "include",
     });
     const data = await res.json();
