@@ -7,10 +7,12 @@ from app.routers import quiz_manage as quiz_router
 from app.routers import question as question_router
 
 app = FastAPI(title="Quiz API")
+allow_origins = [o.rstrip("/") for o in settings.CORS_ORIGINS]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.rstrip("/") for o in settings.CORS_ORIGINS],
+    allow_origins=allow_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
