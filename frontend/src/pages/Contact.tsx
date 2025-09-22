@@ -1,15 +1,15 @@
 // src/pages/ContactPage.tsx
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
 
-type ContactItem = {
-    contact_id: number;
-    subject: string;
-    message: string;
-    email: string;
-    time: string; // ISO
-};
+// type ContactItem = {
+//     contact_id: number;
+//     subject: string;
+//     message: string;
+//     email: string;
+//     time: string; // ISO
+// };
 
 function ContactUserForm() {
     const me = getCurrentUser();
