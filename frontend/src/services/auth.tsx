@@ -1,4 +1,4 @@
-import type { Register } from "react-router-dom";
+// import type { Register } from "react-router-dom";
 
 // src/services/auth.ts
 export type Role = "admin" | "user";

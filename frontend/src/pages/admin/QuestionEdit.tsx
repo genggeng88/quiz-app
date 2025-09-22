@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createQuestion, getQuestion, putQuestion } from "../../services/admin";
-import type { QuestionDetail } from "../../types/admin";
+// import type { QuestionDetail } from "../../types/admin";
 
 type Row = { choiceId?: number; description: string; isCorrect: boolean };
 
