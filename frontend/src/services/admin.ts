@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from "./auth";
 import type {
     UserRow, QuizRow, QuestionRow, QuestionDetail, ChoiceDTO, ContactRow
 } from "../types/admin";

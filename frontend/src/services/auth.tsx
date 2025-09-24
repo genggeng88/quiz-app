@@ -1,10 +1,12 @@
-// import type { Register } from "react-router-dom";
-
 // src/services/auth.ts
+
 export type Role = "admin" | "user";
 export type Status = "active" | "suspended";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const SESSION_KEY = "session";
+const TOKEN_KEY = "auth:token";
+const AUTH_EVENT = "auth-changed";
 
 export type User = {
     id: string;
@@ -19,23 +21,13 @@ export type User = {
 
 export type RegisterResult = { ok: true; message: string };
 
-const SESSION_KEY = "session";
-const TOKEN_KEY = "auth:token";
-const AUTH_EVENT = "auth-changed";
-
 function emitAuthChanged() {
     window.dispatchEvent(new Event(AUTH_EVENT));
 }
 
-function setSession(user: User | null) {
+export function setSession(user: User | null) {
     if (user) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     else localStorage.removeItem(SESSION_KEY);
-    emitAuthChanged();
-}
-
-function setToken(token: string | null) {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
     emitAuthChanged();
 }
 
@@ -46,6 +38,12 @@ export function getCurrentUser(): User | null {
     } catch {
         return null;
     }
+}
+
+export function setToken(token: string | null) {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+    emitAuthChanged();
 }
 
 export function getToken(): string | null {
@@ -91,90 +89,86 @@ function normalizeUser(raw: any): User {
     };
 }
 
+type LoginData = { user: any; token: string };
+
 export async function login(email: string, password: string): Promise<User> {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    const { user: raw, token } = await api<LoginData>("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // important for cookies!
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
     });
-
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
-        throw new Error(data?.data?.message || data?.message || "Login failed");
-    }
-
-    const user = normalizeUser(data.data?.user ?? data.user ?? {});
-    const token = String(data.data?.token ?? data.token ?? "");
-
+    const user = normalizeUser(raw);
     setSession(user);
     setToken(token);
     return user;
 }
 
 export async function refreshToken(): Promise<User | null> {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
-        credentials: "include", // important for cookies!
-        headers: { ...authHeaders() },
-    });
-    if (!res.ok) {
+    try {
+        const data = await api<{ user: any; token?: string }>("/auth/refresh", { method: "POST" });
+        if (data?.token) setToken(data.token);
+        const user = normalizeUser(data.user);
+        setSession(user);
+        return user;
+    } catch {
+        setToken(null);
         setSession(null);
         return null;
     }
-    const data = await res.json();
-    if (!data?.ok) {
-        setSession(null);
-        return null;
-    }
-
-    const user = normalizeUser(data.data?.user ?? data.user ?? {});
-    setSession(user);
-    return user;
 }
 
 export async function register(opts: {
-    email: string;
-    password: string;
-    firstName?: string;
-    lastName?: string;
-    isAdmin?: boolean;
-    isActive?: boolean;
-}): Promise<RegisterResult> {
+    email: string; password: string;
+    firstName?: string; lastName?: string;
+    isAdmin?: boolean; isActive?: boolean;
+}) {
     const payload = {
         email: opts.email,
         password: opts.password,
-        firstName: opts.firstName ?? "",
-        lastName: opts.lastName ?? "",
-        is_active: (opts.isActive ?? true) ? "True" : "False",
-        is_admin: (opts.isAdmin ?? false) ? "True" : "False",
-    }
-
-    const res = await fetch(`${BASE_URL}/auth/register`, {
+        firstname: opts.firstName ?? "",   // match your backend's expected keys
+        lastname: opts.lastName ?? "",
+        is_active: opts.isActive ?? true,  // booleans, not "True"/"False"
+        is_admin: opts.isAdmin ?? false,
+    };
+    const res = await api<{ message?: string }>("/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(payload),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) {
-        throw new Error(data?.data?.message || data?.message || "Registration failed");
-    }
-    return { ok: true, message: String(data.message || "User registered successfully") }
-
+    return { ok: true as const, message: String(res?.["message"] || "User registered successfully") };
 }
-
 
 export async function logout() {
     try {
-        await fetch(`${BASE_URL}/auth/logout`, {
-            method: "POST",
-            credentials: "include",
-            headers: { ...authHeaders() },
-        });
-    } catch {
-        // ignore
-    } finally {
-        setToken(null);
-        setSession(null);
+        await api<void>("/auth/logout", { method: "POST" }); // optional on stateless JWT
+    } catch { /* ignore */ }
+    setToken(null);
+    setSession(null);
+}
+
+
+function join(path: string) {
+    return path.startsWith("http")
+        ? path
+        : `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers || {});
+    const hasJsonBody = init.body !== undefined && !(init.body instanceof FormData);
+    if (hasJsonBody && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+
+    // attach Authorization for header-based JWT
+    if (!headers.has("Authorization")) {
+        const tok = getToken();
+        if (tok) headers.set("Authorization", `Bearer ${tok}`);
     }
+
+    const res = await fetch(join(path), { ...init, headers }); // no credentials: 'include'
+    const ct = res.headers.get("content-type") || "";
+    const parsed = ct.includes("application/json") ? await res.json() : undefined;
+
+    if (!res.ok || (parsed && parsed.ok === false)) {
+        const msg = parsed?.error || parsed?.message || `${res.status} ${res.statusText}`;
+        if (res.status === 401) setToken(null);
+        throw new Error(msg);
+    }
+    return (parsed && "data" in parsed ? parsed.data : parsed) as T;
 }
