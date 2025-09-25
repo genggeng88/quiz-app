@@ -16,7 +16,7 @@ def require_admin(req: Request):
         raise HTTPException(status_code=403, detail="Admin only")
     return user
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("", response_model=dict, dependencies=[Depends(require_admin)])
 def list_quizzes(
     db: Session = Depends(get_db),
     categoryId: Optional[int] = Query(None),

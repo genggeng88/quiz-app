@@ -20,7 +20,7 @@ def require_admin(req: Request):
 class StatusIn(BaseModel):
     status: Literal["active", "suspended"]
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("", response_model=dict, dependencies=[Depends(require_admin)])
 def list_users(db: Session = Depends(get_db)):
     data = user_svc.admin_list_users(db)
     return {"ok": True, "data": data}

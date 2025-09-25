@@ -7,7 +7,7 @@ from app.services import quiz as quiz_svc
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
-@router.get("/", response_model=dict)
+@router.get("", response_model=dict)
 def get_quiz_questions(
     req: Request,
     categoryId: int = Query(..., description="category_id"),
@@ -19,7 +19,7 @@ def get_quiz_questions(
         return {"ok": False, "error": "No questions found for the specified category."}
     return {"ok": True, "data": data}
 
-@router.post("/", response_model=dict)
+@router.post("", response_model=dict)
 def submit_quiz(
     payload: QuizSubmitIn,
     req: Request,

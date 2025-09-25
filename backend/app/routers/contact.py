@@ -10,7 +10,7 @@ from app.services import contact as contact_svc
 
 router = APIRouter(prefix="/contact", tags=["contact"])
 
-@router.post("/", response_model=dict)
+@router.post("", response_model=dict)
 def submit_contact(body: ContactIn, db: Session = Depends(get_db)):
     data = contact_svc.submit_contact(
         db,
@@ -20,7 +20,7 @@ def submit_contact(body: ContactIn, db: Session = Depends(get_db)):
     )
     return {"ok": True, "data": data}
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("", response_model=dict, dependencies=[Depends(require_admin)])
 def list_contacts(db: Session = Depends(get_db)):
     rows = contact_svc.admin_list_contacts(db)
     return {"ok": True, "data": rows}

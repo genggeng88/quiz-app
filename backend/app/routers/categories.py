@@ -10,7 +10,7 @@ def get_db():
     try: yield db
     finally: db.close()
 
-@router.get("/", response_model=dict)
+@router.get("", response_model=dict)
 def list_categories(db: Session = Depends(get_db)):
     rows = db.query(Category).order_by(Category.name).all()
     return {"ok": True, "data": rows}

@@ -21,7 +21,7 @@ def require_admin(req: Request):
 class StatusIn(BaseModel):
     isActive: bool
 
-@router.get("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.get("", response_model=dict, dependencies=[Depends(require_admin)])
 def list_questions(
     db: Session = Depends(get_db),
     categoryId: Optional[int] = Query(None),
@@ -45,7 +45,7 @@ def get_question(question_id: int, db: Session = Depends(get_db)):
     data = q_svc.admin_get_question(db, question_id=question_id)
     return {"ok": True, "data": data}
 
-@router.post("/", response_model=dict, dependencies=[Depends(require_admin)])
+@router.post("", response_model=dict, dependencies=[Depends(require_admin)])
 def create_question(payload: QuestionCreateIn, db: Session = Depends(get_db)):
     data = q_svc.admin_create_question(db, payload)
     return {"ok": True, "data": data}
