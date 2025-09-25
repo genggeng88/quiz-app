@@ -1,4 +1,6 @@
 // src/lib/quiz.ts
+import { api } from "../services/auth";
+
 export type Category = "Math" | "Physics" | "Chemistry" | "Computer Science";
 export const CATEGORIES: Category[] = ["Math", "Physics", "Chemistry", "Computer Science"];
 
@@ -43,6 +45,19 @@ export type AttemptDetail = {
     userFullName: string;
 };
 
+type GenResp = { ok?: boolean; data?: any[]; questions?: any[]; error?: string };
+type SubmitResp = { ok?: boolean; data: { quizId: string | number; score?: number }; error?: string };
+type SummariesResp = { ok?: boolean; data: any[]; error?: string };
+type ResultResp = {
+    ok?: boolean;
+    data?: {
+        quiz?: any;
+        items?: any[];
+        correctness_rate?: number;
+    };
+    error?: string;
+};
+
 // ----- Local "open quiz" helpers -----
 const OPEN_KEY = "openQuiz";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -69,12 +84,12 @@ export function getOpenQuiz():
 // Generate a new quiz (fetch 5 random questions for a category)
 export async function generateQuiz(category: Category): Promise<Question[]> {
     const categoryId = CATEGORY_NAME_TO_ID[category];
-    const res = await fetch(
-        `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
-        { credentials: "include" }
-    );
-    const data = await res.json();
-    if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to generate quiz");
+    // const res = await fetch(
+    //     `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
+    //     { credentials: "include" }
+    // );
+    const data = await api<GenResp>(`/quiz?categoryId=${encodeURIComponent(String(categoryId))}`);
+    if (!data.ok || !data?.ok) throw new Error("Failed to generate quiz");
 
     const list: any[] = data.data ?? data.questions ?? [];
     return list.map((q: any) => ({
@@ -105,26 +120,37 @@ export async function submitQuiz(
     if (times?.timeStart) payload.timeStart = times.timeStart;
     if (times?.timeEnd) payload.timeEnd = times.timeEnd;
 
-    const res = await fetch(
-        `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(payload),
-        }
-    );
-    const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to submit quiz");
-    return { quizId: String(data.data.quizId), score: Number(data.data.score ?? 0) };
+    // const res = await fetch(
+    //     `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
+    //     {
+    //         method: "POST",
+    //         headers: { "Content-Type": "application/json" },
+    //         credentials: "include",
+    //         body: JSON.stringify(payload),
+    //     }
+    // );
+    // const data = await res.json();
+
+    const data = await api<SubmitResp>(`/quiz?categoryId=${encodeURIComponent(String(categoryId))}`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        // Content-Type is auto-set in api() unless body is FormData
+    });
+    if (data?.ok === false) throw new Error(data?.error || "Failed to submit quiz");
+    return {
+        quizId: String(data.data.quizId),
+        score: Number(data.data.score ?? 0)
+    };
 }
 
 export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
-    const res = await fetch(`${BASE_URL}/quiz/result`, {
-        credentials: "include",
-    });
-    const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to fetch quiz summaries");
+    // const res = await fetch(`${BASE_URL}/quiz/result`, {
+    //     credentials: "include",
+    // });
+    // const data = await res.json();
+    // if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to fetch quiz summaries");
+    const data = await api<SummariesResp>("/quiz/result");
+    if (data?.ok === false) throw new Error(data?.error || "Failed to fetch quiz summaries");
 
     return data.data.map((quiz: any) => ({
         quizId: quiz.quiz_id.toString(),
@@ -143,11 +169,14 @@ export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
 
 // src/lib/quiz.ts
 export async function fetchQuizResult(quizId: number): Promise<AttemptDetail> {
-    const res = await fetch(`${BASE_URL}/quiz/result/${quizId}`, {
-        credentials: "include",
-    });
-    const data = await res.json();
-    if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to fetch quiz result");
+    // const res = await fetch(`${BASE_URL}/quiz/result/${quizId}`, {
+    //     credentials: "include",
+    // });
+    // const data = await res.json();
+    // if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to fetch quiz result");
+
+    const data = await api<ResultResp>(`/quiz/result/${quizId}`);
+    if (data?.ok === false) throw new Error(data?.error || "Failed to fetch quiz result");
 
     const quiz = data.data?.quiz ?? {};
     const rows: any[] = data.data?.items ?? [];
