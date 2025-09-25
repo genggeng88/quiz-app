@@ -60,7 +60,6 @@ type ResultResp = {
 
 // ----- Local "open quiz" helpers -----
 const OPEN_KEY = "openQuiz";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export function setOpenQuiz(info: { url: string; category: Category; startedAtISO: string }) {
     try { localStorage.setItem(OPEN_KEY, JSON.stringify(info)); } catch { }
