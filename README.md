@@ -1,7 +1,3 @@
-Here’s a polished, copy-pasteable `README.md` you can drop into your repo. I kept it tight, clear, and deployment-ready, with spots for your screenshots.
-
----
-
 # Quiz App
 
 A full-stack web application for taking quizzes by category with an admin console for managing users, questions, quizzes, and contact messages.
