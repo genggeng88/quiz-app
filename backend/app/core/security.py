@@ -26,11 +26,25 @@ def get_user_from_cookie(request: Request):
     except Exception:
         return None
 
-def require_auth(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
+def require_auth(request: Request) -> dict:
+    token = None
+
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        token = auth.split(" ", 1)[1].strip()
+
+    if not token:
+        token = request.cookies.get("token")
+
+    if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    return user
+
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGO])
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    return payload
 
 def require_admin(request: Request):
     user = require_auth(request)
