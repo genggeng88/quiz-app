@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.hash import bcrypt
 from fastapi import HTTPException, status, Request
 from app.core.config import settings
+from typing import Any, Dict, Optional
+import logging
 
-ALGO = "HS256"
+log = logging.getLogger(__name__)
 
 def hash_password(pw: str) -> str:
     return bcrypt.hash(pw)
@@ -23,6 +25,27 @@ def get_payload_from_token(token: str) -> Optional[Dict[str, Any]]:
     except JWTError:
         return None
 
+def get_user_from_cookie(req: Request) -> Optional[Dict[str, Any]]:
+    """
+    Reads the JWT from the auth cookie and returns the decoded payload.
+    Returns None if the cookie isn't present or the token is invalid/expired.
+    """
+    cookie_name = getattr(settings, "COOKIE_NAME", "token")
+    token = req.cookies.get(cookie_name)
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[getattr(settings, "JWT_ALGORITHM", "HS256")],
+        )
+        # jose verifies `exp` automatically; if expired it raises, which we catch below.
+        return payload  # e.g. {"user_id": ..., "email": ..., "is_admin": ...}
+    except JWTError:
+        return None
+
 
 def require_auth(request: Request) -> dict:
     token = None
@@ -36,9 +59,9 @@ def require_auth(request: Request) -> dict:
 
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-
+    
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGO])
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 

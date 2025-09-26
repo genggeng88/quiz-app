@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, text
 from typing import List, Dict, Any, Optional
-from backend.app.db.models import User  # adjust import to your model path
+from app.db.models import User  # adjust import to your model path
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
     return db.execute(select(User).where(User.email == email)).scalar_one_or_none()

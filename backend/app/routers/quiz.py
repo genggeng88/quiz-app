@@ -5,6 +5,10 @@ from app.core.security import require_auth
 from app.schemas.schemas import QuizSubmitIn  # your existing Pydantic schema
 from app.services import quiz as quiz_svc
 
+import logging
+
+log = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 @router.get("", response_model=dict)
@@ -49,6 +53,7 @@ def quiz_result(quiz_id: int, req: Request, db: Session = Depends(get_db)):
 
 @router.get("/result", response_model=dict)
 def user_quiz_list(req: Request, db: Session = Depends(get_db)):
+    # log.info(f"/result request: {Request}")
     user = require_auth(req)
     data = quiz_svc.list_user_quizzes(db, user_id=user["user_id"])
     return {"ok": True, "data": data}

@@ -3,7 +3,8 @@ from typing import List
 
 class Settings(BaseSettings):
     DATABASE_URL: str
-    JWT_SECRET: str 
+    JWT_SECRET: str = "change-me"
+    JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_DAYS: int = 7
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",

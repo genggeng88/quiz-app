@@ -186,6 +186,7 @@ export async function submitQuiz(
 }
 
 export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
+    console.log("trying to fetch quiz summary by calling api<>")
     const rows = await api<SummaryWire[]>("/quiz/result");
     return rows.map((r) => ({
         quizId: String(r.quiz_id),
