@@ -6,15 +6,9 @@ from typing import Optional
 from app.db.session import get_db
 from app.core.security import require_auth
 from app.services import quiz_manage as qm_svc
+from app.core.security import require_admin
 
 router = APIRouter(prefix="/admin/quizzes", tags=["admin:quizzes"])
-
-def require_admin(req: Request):
-    user = require_auth(req)
-    # accept either role="admin" or is_admin=True depending on your token payload
-    if not (user.get("role") == "admin" or user.get("is_admin") is True):
-        raise HTTPException(status_code=403, detail="Admin only")
-    return user
 
 @router.get("", response_model=dict, dependencies=[Depends(require_admin)])
 def list_quizzes(

@@ -9,14 +9,10 @@ from app.core.security import require_auth
 from app.schemas.schemas import QuestionCreateIn, QuestionUpdateIn, QuestionPutIn
 from app.services import question as q_svc
 from app.services.question import admin_put_question
+from app.core.security import require_admin
+
 
 router = APIRouter(prefix="/admin/questions", tags=["admin:questions"])
-
-def require_admin(req: Request):
-    user = require_auth(req)
-    if not (user.get("role") == "admin" or user.get("is_admin") is True):
-        raise HTTPException(status_code=403, detail="Admin only")
-    return user
 
 class StatusIn(BaseModel):
     isActive: bool

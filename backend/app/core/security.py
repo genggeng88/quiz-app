@@ -12,19 +12,17 @@ def hash_password(pw: str) -> str:
 def verify_password(pw: str, hashed: str) -> bool:
     return bcrypt.verify(pw, hashed)
 
-def make_token(payload: dict) -> str:
+def make_token(payload: Dict[str, Any]) -> str:
     exp = datetime.utcnow() + timedelta(days=settings.JWT_EXPIRE_DAYS)
-    data = {**payload, "exp": exp}
-    return jwt.encode(data, settings.JWT_SECRET, algorithm=ALGO)
+    to_encode = {**payload, "exp": exp}
+    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
-def get_user_from_cookie(request: Request):
-    token = request.cookies.get("token")
-    if not token:
-        return None
+def get_payload_from_token(token: str) -> Optional[Dict[str, Any]]:
     try:
-        return jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGO])
-    except Exception:
+        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError:
         return None
+
 
 def require_auth(request: Request) -> dict:
     token = None

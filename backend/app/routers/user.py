@@ -7,15 +7,9 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import require_auth
 from app.services import user as user_svc
+from app.core.security import require_admin
 
 router = APIRouter(prefix="/admin/users", tags=["admin:users"])
-
-def require_admin(req: Request):
-    """Accepts either role='admin' or is_admin=True (works with both styles)."""
-    user = require_auth(req)
-    if not (user.get("role") == "admin" or user.get("is_admin") is True):
-        raise HTTPException(status_code=403, detail="Admin only")
-    return user
 
 class StatusIn(BaseModel):
     status: Literal["active", "suspended"]

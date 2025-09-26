@@ -1,14 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.models.models import Category
+from backend.app.db.models import Category
+from db.seesion import get_db
 
 router = APIRouter(prefix="/categories", tags=["categories"])
-
-def get_db():
-    db = SessionLocal()
-    try: yield db
-    finally: db.close()
 
 @router.get("", response_model=dict)
 def list_categories(db: Session = Depends(get_db)):

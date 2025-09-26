@@ -37,14 +37,14 @@ class Question(Base):
 class Choice(Base):
     __tablename__ = "choice"
     choice_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    question_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("question.question_id", ondelete="CASCADE"), nullable=False)
+    question_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("questions.question_id", ondelete="CASCADE"), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 class Quiz(Base):
     __tablename__ = "quizzes"
     quiz_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user.user_id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
     category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("category.category_id", ondelete="RESTRICT"), nullable=False)
     name: Mapped[str | None] = mapped_column(Text)
     time_start: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -53,6 +53,6 @@ class Quiz(Base):
 class QuizQuestion(Base):
     __tablename__ = "quizquestion"
     qq_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    quiz_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("quiz.quiz_id", ondelete="CASCADE"), nullable=False)
-    question_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("question.question_id", ondelete="RESTRICT"), nullable=False)
+    quiz_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("quizzes.quiz_id", ondelete="CASCADE"), nullable=False)
+    question_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("questions.question_id", ondelete="RESTRICT"), nullable=False)
     user_choice_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("choice.choice_id", ondelete="SET NULL"))

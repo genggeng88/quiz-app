@@ -37,8 +37,3 @@ def login(body: LoginIn, res: Response, db: Session = Depends(get_db)):
 def logout(res: Response):
     auth_svc.clear_login_cookie(res)
     return {"ok": True, "data": {"message": "logged out"}}
-
-@router.get("/me", response_model=dict)
-def me(req: Request, db: Session = Depends(get_db)):
-    u = auth_svc.get_current_user_from_cookie(req, db)
-    return {"ok": True, "data": {"user": UserOut.model_validate(u).model_dump() if u else None}}
