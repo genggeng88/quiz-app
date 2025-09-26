@@ -24,7 +24,6 @@ const toCategoryName = (raw: any): Category => {
 };
 
 // ----- Types -----
-export type Option = { id: string; text: string };
 
 export type Question = {
     id: string;
@@ -45,18 +44,71 @@ export type AttemptDetail = {
     userFullName: string;
 };
 
-type GenResp = { ok?: boolean; data?: any[]; questions?: any[]; error?: string };
-type SubmitResp = { ok?: boolean; data: { quizId: string | number; score?: number }; error?: string };
-type SummariesResp = { ok?: boolean; data: any[]; error?: string };
-type ResultResp = {
-    ok?: boolean;
-    data?: {
-        quiz?: any;
-        items?: any[];
-        correctness_rate?: number;
-    };
-    error?: string;
+type ChoiceWire = {
+    choiceId: number;
+    description: string;
 };
+
+type QuestionWire = {
+    question_id: number;
+    question: string;
+    options: ChoiceWire[];
+};
+
+type AnswerWire = { questionId: number; choiceId: number };
+
+export type SubmitPayload = {
+    categoryId: number;
+    answers: AnswerWire[];
+    timeStart?: string;
+    timeEnd?: string;
+};
+
+// api() returns the INNER object, so model just that
+export type SubmitResultWire = {
+    quizId?: number | string;
+    score?: number;
+    timeStart?: string;
+    timeEnd?: string;
+    durationSec?: number;
+};
+
+export type SummaryWire = {
+    quiz_id: number;
+    user_id: number;
+    category_id: number;
+    name?: string;
+    time_start: string;
+    time_end: string | null;
+    correct_rate: number;
+};
+
+type QuizMetaWire = {
+    quiz_id: number;
+    user_id?: number;
+    category_id: number;
+    name?: string;
+    time_start: string;                  // ISO
+    time_end?: string | null;            // ISO or null
+    correct_rate?: number;               // 0.0 ~ 1.0
+};
+
+export type QuizRowWire = {
+    question_id: number;
+    question: string;
+    choice_id: number;
+    option_desc: string;
+    is_correct: boolean;
+    user_choice_id: number | null;
+};
+
+type ResultDetailWire = {
+    quiz: QuizMetaWire;
+    items: QuizRowWire[];
+    correctness_rate?: number;
+};
+
+type Option = { id: string; text: string };
 
 // ----- Local "open quiz" helpers -----
 const OPEN_KEY = "openQuiz";
@@ -83,20 +135,22 @@ export function getOpenQuiz():
 // Generate a new quiz (fetch 5 random questions for a category)
 export async function generateQuiz(category: Category): Promise<Question[]> {
     const categoryId = CATEGORY_NAME_TO_ID[category];
-    // const res = await fetch(
-    //     `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
-    //     { credentials: "include" }
-    // );
-    const data = await api<GenResp>(`/quiz?categoryId=${encodeURIComponent(String(categoryId))}`);
-    if (!data.ok || !data?.ok) throw new Error("Failed to generate quiz");
 
-    const list: any[] = data.data ?? data.questions ?? [];
-    return list.map((q: any) => ({
-        id: String(q.questionId ?? q.question_id ?? q.id),
-        prompt: String(q.question ?? q.prompt ?? ""),
-        options: (q.options ?? []).map((opt: any) => ({
-            id: String(opt.choiceId ?? opt.choice_id ?? opt.id ?? opt.value),
-            text: String(opt.description ?? opt.text ?? opt.label ?? opt.value),
+    console.log("generateQuiz(): categoryId=", categoryId);
+    const rows = await api<QuestionWire[]>(
+        `/quiz?categoryId=${encodeURIComponent(String(categoryId))}`
+    );
+    console.log("generateQuiz(): rows=", rows);
+    if (!Array.isArray(rows)) {
+        throw new Error("Bad response: expected an array of questions");
+    }
+
+    return rows.map((q) => ({
+        id: String(q.question_id),
+        prompt: q.question,
+        options: (q.options ?? []).map((opt) => ({
+            id: String(opt.choiceId),
+            text: opt.description,
         })),
         answer: "",
     }));
@@ -109,77 +163,69 @@ export async function submitQuiz(
     times?: { timeStart?: string; timeEnd?: string }   // ← add this
 ): Promise<{ quizId: string; score: number }> {
     const categoryId = CATEGORY_NAME_TO_ID[category];
-    const payload: any = {
-        answers: Object.entries(answers).map(([questionId, choiceId]) => ({
-            questionId: Number(questionId),
-            choiceId: Number(choiceId),
-        })),
+    const payload: SubmitPayload = {
         categoryId,
+        answers: Object.entries(answers).map(([qId, cId]) => ({
+            questionId: Number(qId),
+            choiceId: Number(cId),
+        })),
+        ...(times?.timeStart ? { timeStart: times.timeStart } : {}),
+        ...(times?.timeEnd ? { timeEnd: times.timeEnd } : {}),
     };
-    if (times?.timeStart) payload.timeStart = times.timeStart;
-    if (times?.timeEnd) payload.timeEnd = times.timeEnd;
 
-    // const res = await fetch(
-    //     `${BASE_URL}/quiz?categoryId=${encodeURIComponent(String(categoryId))}`,
-    //     {
-    //         method: "POST",
-    //         headers: { "Content-Type": "application/json" },
-    //         credentials: "include",
-    //         body: JSON.stringify(payload),
-    //     }
-    // );
-    // const data = await res.json();
-
-    const data = await api<SubmitResp>(`/quiz?categoryId=${encodeURIComponent(String(categoryId))}`, {
+    const res = await api<SubmitResultWire>(`/quiz?categoryId=${categoryId}`, {
         method: "POST",
         body: JSON.stringify(payload),
         // Content-Type is auto-set in api() unless body is FormData
     });
-    if (data?.ok === false) throw new Error(data?.error || "Failed to submit quiz");
+
     return {
-        quizId: String(data.data.quizId),
-        score: Number(data.data.score ?? 0)
+        quizId: String(res.quizId),
+        score: Number(res.score ?? 0),
     };
 }
 
 export async function fetchQuizSummaries(): Promise<AttemptDetail[]> {
-    // const res = await fetch(`${BASE_URL}/quiz/result`, {
-    //     credentials: "include",
-    // });
-    // const data = await res.json();
-    // if (!res.ok || !data.ok) throw new Error(data?.error || "Failed to fetch quiz summaries");
-    const data = await api<SummariesResp>("/quiz/result");
-    if (data?.ok === false) throw new Error(data?.error || "Failed to fetch quiz summaries");
-
-    return data.data.map((quiz: any) => ({
-        quizId: quiz.quiz_id.toString(),
-        category: quiz.category_id,
-        createdAtISO: quiz.time_start,
-        timeTakenSec: quiz.time_end && quiz.time_start
-            ? Math.floor((new Date(quiz.time_end).getTime() - new Date(quiz.time_start).getTime()) / 1000)
-            : 0,
-        correctRate: quiz.correct_rate ?? 0,
+    const rows = await api<SummaryWire[]>("/quiz/result");
+    return rows.map((r) => ({
+        quizId: String(r.quiz_id),
+        category: toCategoryName(r.category_id),
+        createdAtISO: r.time_start,
+        timeTakenSec:
+            r.time_end
+                ? Math.floor(
+                    (new Date(r.time_end).getTime() - new Date(r.time_start).getTime()) / 1000
+                )
+                : 0,
+        correctRate: Number(r.correct_rate ?? 0),
         questions: [],
         answers: {},
-        userEmail: "",      // Fill if backend provides
-        userFullName: "",   // Fill if backend provides
+        userEmail: "",
+        userFullName: "",
     }));
 }
 
 // src/lib/quiz.ts
 export async function fetchQuizResult(quizId: number): Promise<AttemptDetail> {
-    // const res = await fetch(`${BASE_URL}/quiz/result/${quizId}`, {
-    //     credentials: "include",
-    // });
-    // const data = await res.json();
-    // if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to fetch quiz result");
+    const resp = await api<ResultDetailWire | QuizRowWire[] | QuizMetaWire>(`/quiz/result/${quizId}`);
 
-    const data = await api<ResultResp>(`/quiz/result/${quizId}`);
-    if (data?.ok === false) throw new Error(data?.error || "Failed to fetch quiz result");
+    let meta: QuizMetaWire | undefined;
+    let rows: QuizRowWire[] = [];
 
-    const quiz = data.data?.quiz ?? {};
-    const rows: any[] = data.data?.items ?? [];
+    if (Array.isArray(resp)) {
+        // rows-only payload
+        rows = resp;
+    } else if ((resp as any)?.quiz && Array.isArray((resp as any)?.items)) {
+        // detail payload with quiz + items
+        const d = resp as ResultDetailWire;
+        meta = d.quiz;
+        rows = d.items ?? [];
+    } else {
+        // summary-only payload
+        meta = resp as QuizMetaWire;
+    }
 
+    // Build questions & answers if rows exist
     type QBuild = { id: string; prompt: string; options: Option[]; answer: string };
     const qMap = new Map<string, QBuild>();
     const answers: Record<string, string> = {};
@@ -188,26 +234,20 @@ export async function fetchQuizResult(quizId: number): Promise<AttemptDetail> {
         const qid = String(r.question_id);
         if (!qid) continue;
 
-        // create question bucket
         let qb = qMap.get(qid);
         if (!qb) {
             qb = { id: qid, prompt: String(r.question ?? ""), options: [], answer: "" };
             qMap.set(qid, qb);
         }
 
-        // add option from this row (dedupe)
         const choiceId = String(r.choice_id);
         const text = String(r.option_desc ?? "");
         if (!qb.options.some(o => o.id === choiceId)) {
             qb.options.push({ id: choiceId, text });
         }
 
-        // correct answer lives on the row where is_correct === true
-        if (r.is_correct === true) {
-            qb.answer = choiceId;
-        }
+        if (r.is_correct === true) qb.answer = choiceId;
 
-        // user's choice (same across the 4 rows)
         if (r.user_choice_id != null && answers[qid] == null) {
             answers[qid] = String(r.user_choice_id);
         }
@@ -215,34 +255,37 @@ export async function fetchQuizResult(quizId: number): Promise<AttemptDetail> {
 
     const questions = Array.from(qMap.values());
 
-    // correct rate: prefer backend, else compute
+    // Compute correctness if not provided
     const computed =
-        questions.filter(q => q.answer && answers[q.id] === q.answer).length /
-        Math.max(1, questions.length);
+        questions.length === 0
+            ? 0
+            : questions.filter(q => q.answer && answers[q.id] === q.answer).length / questions.length;
 
     const correctRate =
-        typeof quiz.correct_rate === "number"
-            ? quiz.correct_rate
-            : typeof data.data?.correctness_rate === "number"
-                ? data.data.correctness_rate
-                : computed;
+        (meta?.correct_rate ??
+            (typeof (resp as any)?.correctness_rate === "number" ? (resp as any).correctness_rate : undefined) ??
+            computed) || 0;
 
-    const category = toCategoryName(quiz.category ?? quiz.category_id);
+    const categoryId = meta?.category_id;
+    const category: Category =
+        categoryId != null ? toCategoryName(categoryId) : CATEGORIES[0];
 
     const timeTakenSec =
-        quiz.time_end && quiz.time_start
-            ? Math.floor((new Date(quiz.time_end).getTime() - new Date(quiz.time_start).getTime()) / 1000)
+        meta?.time_end && meta?.time_start
+            ? Math.floor(
+                (new Date(meta.time_end).getTime() - new Date(meta.time_start).getTime()) / 1000
+            )
             : 0;
 
     return {
-        quizId: String(quiz.quiz_id ?? quizId),
+        quizId: String(meta?.quiz_id ?? quizId),
         category,
-        createdAtISO: String(quiz.time_start ?? ""),
+        createdAtISO: String(meta?.time_start ?? ""),
         timeTakenSec,
         correctRate,
-        questions,
-        answers,
-        userEmail: "",      // not provided by payload
-        userFullName: "",   // not provided by payload
+        questions,       // will be [] if endpoint returned only summary/meta
+        answers,         // {} if no rows
+        userEmail: "",   // not provided by payload
+        userFullName: "",// not provided by payload
     };
 }

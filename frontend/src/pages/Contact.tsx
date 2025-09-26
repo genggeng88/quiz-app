@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
+import { api } from "../services/auth";
 
 // type ContactItem = {
 //     contact_id: number;
@@ -19,7 +20,6 @@ function ContactUserForm() {
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,14 +30,14 @@ function ContactUserForm() {
         }
         try {
             setLoading(true);
-            const res = await fetch(`${BASE_URL}/contact`, {
+
+            type ContactResp = { id?: number | string } | null | void;
+            await api<ContactResp>("/contact", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ subject, message, email }),
-            });
-            const data = await res.json();
-            if (!res.ok || !data.ok) throw new Error(data?.error || "Submit failed");
+                body: JSON.stringify({ subject: subject.trim(), message: message.trim(), email: email.trim() }),
+                // Content-Type is auto-set in api() unless body is FormData
+            })
+
             setOk("Thanks! Your message was sent.");
             setSubject(""); setMessage("");
         } catch (e: any) {

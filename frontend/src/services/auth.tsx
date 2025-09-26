@@ -26,6 +26,7 @@ function emitAuthChanged() {
 }
 
 export function setSession(user: User | null) {
+    console.log("setSession(): user=", user);
     if (user) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     else localStorage.removeItem(SESSION_KEY);
     emitAuthChanged();
@@ -41,8 +42,10 @@ export function getCurrentUser(): User | null {
 }
 
 export function setToken(token: string | null) {
+    console.log("setToken(): token=", token);
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
+    console.log("localStorage: TOKEN_KEY", localStorage.getItem(TOKEN_KEY));
     emitAuthChanged();
 }
 
@@ -96,6 +99,7 @@ export async function login(email: string, password: string): Promise<User> {
         method: "POST",
         body: JSON.stringify({ email: email.trim(), password }),
     });
+    console.log("login(): raw user=", raw, " token=", token);
     const user = normalizeUser(raw);
     setSession(user);
     setToken(token);
@@ -158,10 +162,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     // attach Authorization for header-based JWT
     if (!headers.has("Authorization")) {
         const tok = getToken();
+        console.log("api() triggered with token=", tok);
         if (tok) headers.set("Authorization", `Bearer ${tok}`);
     }
 
+    console.log("api(): fetch", join(path), init, " headers=", Object.fromEntries(headers.entries()));
     const res = await fetch(join(path), { ...init, headers }); // no credentials: 'include'
+    console.log("api(): response", res);
     const ct = res.headers.get("content-type") || "";
     const parsed = ct.includes("application/json") ? await res.json() : undefined;
 
