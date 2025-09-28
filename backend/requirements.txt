@@ -9,8 +9,10 @@ python-dotenv
 # Auth / security
 python-jose[cryptography]>=3.3.0,<4
 passlib==1.7.4
-bcrypt<4.0.0                 # keep bcrypt on 3.x to satisfy passlib 1.7.x
 python-multipart>=0.0.9    # needed if you use form data (e.g., OAuth2PasswordRequestForm)
+
+# passlib[bcrypt]>=1.7.4,<1.8
+bcrypt>=4,<5
 
 # Database stack
 psycopg[binary]            # Postgres (psycopg3)

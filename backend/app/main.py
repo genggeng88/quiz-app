@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 import logging, os, sys
 from app.core.config import settings
 from app.routers import auth, categories, quiz, contact
@@ -7,29 +10,14 @@ from app.routers import user as user_router
 from app.routers import quiz_manage as quiz_router
 from app.routers import question as question_router
 
-def setup_logging() -> None:
-    level_name = os.getenv("LOG_LEVEL", "INFO").upper()
-    level = getattr(logging, level_name, logging.INFO)
-
-    root = logging.getLogger()
-    # Always set the root level (even if Uvicorn already attached handlers)
-    root.setLevel(level)
-
-    # Ensure there is at least one stream handler to stdout
-    if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
-        h = logging.StreamHandler(sys.stdout)
-        h.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s [%(name)s] %(message)s"
-        ))
-        h.setLevel(level)
-        root.addHandler(h)
-
-    # Optional: tone down noisy libs
-    logging.getLogger("uvicorn.access").setLevel(os.getenv("UVICORN_ACCESS_LOG_LEVEL", "WARNING"))
+from app.core.logging import setup_logging, get_logger
+from app.middleware.request_id import RequestIDMiddleware
+from app.core.errors import handle_http, handle_validation, handle_unexpected
 
 setup_logging()
-
 app = FastAPI(title="Quiz API")
+log = get_logger("app")
+
 allow_origins = [o.rstrip("/") for o in settings.CORS_ORIGINS]
 
 app.add_middleware(
@@ -40,6 +28,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request ID middleware
+app.add_middleware(RequestIDMiddleware)
+
+# Global exception handlers
+app.add_exception_handler(StarletteHTTPException, handle_http)
+app.add_exception_handler(RequestValidationError, handle_validation)
+app.add_exception_handler(Exception, handle_unexpected)
 
 @app.get("/healthz")
 def health(): return {"ok": True}
